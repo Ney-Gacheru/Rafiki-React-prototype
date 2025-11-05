@@ -1,4 +1,7 @@
 import React from "react";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import theme from "./context/ThemeContext";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -15,6 +18,8 @@ import AdminPanel from "./pages/AdminPanel";
 
 export default function App() {
   return (
+ <ThemeProvider theme={theme}>
+   <CssBaseline /> 
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -51,5 +56,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+  </ ThemeProvider >
+    
   );
 }
