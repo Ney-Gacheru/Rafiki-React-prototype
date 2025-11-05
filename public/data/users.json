@@ -1,0 +1,6 @@
+[
+  {"id":"u_admin","name":"Admin User","email":"admin@example.com","password":"admin123","role":"admin","approved":true},
+  {"id":"u_vendor","name":"Jane Vendor","email":"vendor@example.com","password":"vend123","role":"vendor","approved":true},
+  {"id":"u_customer","name":"Peter Buyer","email":"buyer@example.com","password":"cust123","role":"customer","approved":true},
+  {"id":"u_student","name":"Lyn Student","email":"student@example.com","password":"stud123","role":"student","approved":true}
+]
