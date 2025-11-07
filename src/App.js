@@ -5,6 +5,7 @@ import theme from "./context/ThemeContext";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import { DataProvider } from "./context/DataContext";
 
 /* Pages - create files in src/pages/... or use placeholders */
 import Landing from "./pages/Landing";
@@ -20,6 +21,7 @@ export default function App() {
   return (
  <ThemeProvider theme={theme}>
    <CssBaseline /> 
+    <DataProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -56,6 +58,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </DataProvider>
   </ ThemeProvider >
     
   );

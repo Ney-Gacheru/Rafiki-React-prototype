@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Signup() {
@@ -38,7 +38,7 @@ export default function Signup() {
         </label>
         <button style={{width:"100%",padding:10,background:"#ff7a00",color:"#fff",border:"none",borderRadius:6}} type="submit">Sign up</button>
         <div style={{marginTop:12,fontSize:13,color:"#666"}}>
-          By default new accounts are market buyers. If you requested seller status, an admin will review your request.
+          I have an account? <Link to="/login">Login</Link>
         </div>
       </form>
     </div>
