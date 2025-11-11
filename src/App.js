@@ -19,10 +19,6 @@ import AdminPanel from "./pages/AdminPanel";
 
 export default function App() {
   return (
- <ThemeProvider theme={theme}>
-   <CssBaseline /> 
-    <DataProvider>
-    <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -57,9 +53,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
-    </DataProvider>
-  </ ThemeProvider >
     
   );
 }

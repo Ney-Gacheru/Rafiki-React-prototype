@@ -27,24 +27,31 @@ export default function NavBar() {
     navigate("/", { replace: true });
   };
 
+  // NAVBAR HEIGHT (used by layout to offset content)
+  const NAV_HEIGHT = 64;
+
   return (
     <>
       <AppBar
-        position="sticky"
+        position="fixed"           // fixed so it never scrolls
         elevation={0}
         sx={{
+          top: 0,
+          height: NAV_HEIGHT,
           bgcolor: "rgba(255,255,255,0.96)",
           color: "#111",
           backdropFilter: "blur(4px)",
-          borderBottom: "1px solid rgba(0,0,0,0.04)"
+          borderBottom: "1px solid rgba(0,0,0,0.04)",
+          zIndex: 1400,
+          justifyContent: "center",
         }}
       >
-        <Toolbar sx={{ justifyContent: "space-between" }}>
+        <Toolbar sx={{ justifyContent: "space-between", height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <RouterLink to="/" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
               <img src="/logo192.png" alt="rafiki logo" style={{ width: 36, height: 36 }} />
               <Typography variant="h6" sx={{ fontWeight: 700, ml: 1, color: "inherit" }}>
-                Rafiki
+                R
               </Typography>
             </RouterLink>
           </Box>
@@ -83,6 +90,9 @@ export default function NavBar() {
           </Box>
         </Toolbar>
       </AppBar>
+
+      {/* small spacer so page content isn't behind the fixed navbar */}
+      <Box sx={{ height: `${NAV_HEIGHT}px`, width: "100%" }} />
 
       <Dialog open={logoutOpen} onClose={() => setLogoutOpen(false)}>
         <DialogTitle>Confirm logout</DialogTitle>

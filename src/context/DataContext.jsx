@@ -1,15 +1,6 @@
 // src/context/DataContext.jsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-/**
- * DataContext
- * - Loads users from /data/users.json (public folder)
- * - Seeds a posts array (demo content similar to your original JS)
- * - Persists to localStorage under RAFIKI_KEY
- * - Exposes auth-like helpers used by your current Login/Signup (login, signup, getDefaultArea)
- * - Exposes posts/interactions API
- */
-
 const RAFIKI_KEY = "rafikiData_v1";
 const USER_KEY = "currentUser";
 
@@ -77,20 +68,18 @@ function nowISO() {
 
 export function DataProvider({ children }) {
   const [data, setData] = useState(() => {
-    // try hydrate from localStorage
     try {
       const raw = localStorage.getItem(RAFIKI_KEY);
       if (raw) return JSON.parse(raw);
     } catch (e) {
       // ignore
     }
-    // fallback skeleton; users loaded asynchronously from public/data/users.json
     return {
-      users: [], // will be populated
-      posts: DEMO_POSTS.slice(), // demo posts
+      users: [],
+      posts: DEMO_POSTS.slice(),
       messages: [],
       notifications: [],
-      follows: {}, // { username: [followers...] }
+      follows: {}, // { username: ["follower1","follower2", ...] }
     };
   });
 
@@ -103,7 +92,7 @@ export function DataProvider({ children }) {
     }
   });
 
-  // persist data to localStorage whenever it changes
+  // persist data
   useEffect(() => {
     try {
       localStorage.setItem(RAFIKI_KEY, JSON.stringify(data));
@@ -112,13 +101,13 @@ export function DataProvider({ children }) {
     }
   }, [data]);
 
-  // persist currentUser to localStorage
+  // persist currentUser
   useEffect(() => {
     if (currentUser) localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
     else localStorage.removeItem(USER_KEY);
   }, [currentUser]);
 
-  // load users from public/data/users.json on first mount (if file exists)
+  // load users.json if present
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -127,7 +116,6 @@ export function DataProvider({ children }) {
         if (!res.ok) throw new Error("users not found");
         const fileUsers = await res.json();
         if (!mounted) return;
-        // merge file users into existing data.users, avoid duplicates by id or email
         setData((prev) => {
           const emails = new Set(prev.users.map(u => u.email));
           const merged = [...prev.users];
@@ -137,7 +125,6 @@ export function DataProvider({ children }) {
           return { ...prev, users: merged.length ? merged : fileUsers };
         });
       } catch (err) {
-        // if file not found, keep existing users (maybe already in localStorage)
         console.info("users.json not loaded (ok if not present):", err.message);
       } finally {
         if (mounted) setLoadingUsers(false);
@@ -146,18 +133,15 @@ export function DataProvider({ children }) {
     return () => { mounted = false; };
   }, []);
 
-  // small id generator
+  // id generator
   const makeId = (prefix = "p") => `${prefix}${Date.now()}`;
 
   /* ----------------- AUTH-LIKE HELPERS ----------------- */
-  // login used by your Login.jsx — returns user or throws an error
   const login = async ({ email, password }) => {
-    // ensure users loaded
     if (loadingUsers) {
-      // wait briefly (most often file loads quickly)
       await new Promise(r => setTimeout(r, 80));
     }
-    const user = data.users.find(u => u.email === (email || "").trim() && u.password === (password || ""));
+    const user = (data.users || []).find(u => u.email === (email || "").trim() && u.password === (password || ""));
     if (!user) {
       const err = new Error("Invalid credentials");
       err.code = "INVALID_CREDENTIALS";
@@ -167,15 +151,12 @@ export function DataProvider({ children }) {
     return user;
   };
 
-  // signup used by your Signup.jsx — returns user or throws
-  // wantToSell toggles vendor + approved:false
   const signup = async ({ name, email, password, wantToSell = false }) => {
-    // validate
     if (!name || !email || !password) {
       const err = new Error("Fill all fields");
       throw err;
     }
-    const exists = data.users.find(u => u.email === email.trim());
+    const exists = (data.users || []).find(u => u.email === email.trim());
     if (exists) {
       const err = new Error("Email already used");
       throw err;
@@ -188,7 +169,7 @@ export function DataProvider({ children }) {
       email: email.trim(),
       password,
       role,
-      approved: wantToSell ? false : true, // vendors must be vetted
+      approved: wantToSell ? false : true,
       createdAt: nowISO()
     };
     setData(prev => ({ ...prev, users: [user, ...prev.users] }));
@@ -196,11 +177,9 @@ export function DataProvider({ children }) {
     return user;
   };
 
-  // helper used by your Login flow to decide where to navigate after login
   const getDefaultArea = (user = currentUser) => {
     if (!user) return "market";
-    // map roles to area
-    const marketRoles = ["vendor", "customer", "customer", "user"];
+    const marketRoles = ["vendor", "customer", "user"];
     const lmsRoles = ["student", "educator", "school"];
     if (marketRoles.includes(user.role)) return "market";
     if (lmsRoles.includes(user.role)) return "lms";
@@ -232,30 +211,31 @@ export function DataProvider({ children }) {
     return p;
   };
 
-  const editPost = (postId, patch = {}) => {
-    setData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === postId ? { ...p, ...patch } : p) }));
+  // updatePost (shallow merge) — used by FeedTabs
+  const updatePost = (postId, patch = {}) => {
+    setData(prev => ({
+      ...prev,
+      posts: (prev.posts || []).map(p => p.id === postId ? { ...p, ...patch } : p)
+    }));
   };
+
+  const editPost = (postId, patch = {}) => updatePost(postId, patch);
 
   const deletePost = (postId) => {
-    setData(prev => ({ ...prev, posts: prev.posts.filter(p => p.id !== postId) }));
+    setData(prev => ({ ...prev, posts: (prev.posts || []).filter(p => p.id !== postId) }));
   };
 
-  // like toggle for simplicity
   const likeToggle = (postId, byUserName = currentUser?.name) => {
     setData(prev => {
-      const posts = prev.posts.map(p => {
+      const posts = (prev.posts || []).map(p => {
         if (p.id !== postId) return p;
-        // maintain a lightweight likedBy set in the post (not persisted to seed) — we will store likedBy as usernames
         const likedBy = new Set(p.likedBy || []);
         if (!byUserName) {
           p.likes = (p.likes || 0) + 1;
           return p;
         }
-        if (likedBy.has(byUserName)) {
-          likedBy.delete(byUserName);
-        } else {
-          likedBy.add(byUserName);
-        }
+        if (likedBy.has(byUserName)) likedBy.delete(byUserName);
+        else likedBy.add(byUserName);
         return { ...p, likedBy: Array.from(likedBy), likes: likedBy.size };
       });
       return { ...prev, posts };
@@ -263,19 +243,19 @@ export function DataProvider({ children }) {
   };
 
   const addComment = (postId, comment = { text: "", from: currentUser?.name }) => {
-    // for demo just bump count and push to notifications/messages optionally
     setData(prev => ({
       ...prev,
-      posts: prev.posts.map(p => p.id === postId ? { ...p, comments: (p.comments || 0) + 1 } : p)
+      posts: (prev.posts || []).map(p => p.id === postId ? { ...p, comments: (p.comments || 0) + 1 } : p)
     }));
   };
 
   const sharePost = (postId, byUserName = currentUser?.name) => {
-    setData(prev => ({ ...prev, posts: prev.posts.map(p => p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p) }));
+    setData(prev => ({ ...prev, posts: (prev.posts || []).map(p => p.id === postId ? { ...p, shares: (p.shares || 0) + 1 } : p) }));
   };
 
   /* ----------------- FOLLOWERS ----------------- */
-  const toggleFollow = (username) => {
+  // data.follows shape: { username: ["follower1","follower2"] }
+  const toggleFollowInternal = (username) => {
     if (!currentUser) return { ok: false, message: "Login required" };
     setData(prev => {
       const follows = { ...(prev.follows || {}) };
@@ -288,6 +268,18 @@ export function DataProvider({ children }) {
     });
     return { ok: true };
   };
+
+  // convert follows into simple boolean map for the *current user*
+  const followsBoolean = useMemo(() => {
+    const out = {};
+    const f = data.follows || {};
+    const me = currentUser?.name;
+    Object.keys(f).forEach(username => {
+      if (!me) out[username] = false;
+      else out[username] = Array.isArray(f[username]) && f[username].includes(me);
+    });
+    return out;
+  }, [data.follows, currentUser]);
 
   /* ----------------- DEALS / RESPONSES ----------------- */
   const makeOffer = (postId, { amount, message }) => {
@@ -319,25 +311,32 @@ export function DataProvider({ children }) {
     setData(prev => ({ ...prev, users: prev.users.map(u => u.id === userId ? { ...u, approved: true } : u) }));
   };
 
-  // convenience getters
+  /* ----------------- GETTERS ----------------- */
   const getPosts = () => data.posts || [];
   const getUsers = () => data.users || [];
   const getUserByEmail = (email) => (data.users || []).find(u => u.email === email);
   const getUserByName = (name) => (data.users || []).find(u => u.name === name);
 
+  // expose a stable API that matches FeedTabs expectations
   const value = useMemo(() => ({
-    // state
+    // raw state
     data,
     loadingUsers,
     currentUser,
 
-    // auth-like
+    // directly expected by FeedTabs and other components
+    posts: data.posts || [],
+    updatePost,            // (id, patch) shallow merge
+    follows: followsBoolean,
+    toggleFollow: toggleFollowInternal,
+
+    // auth-like (used by Login/Signup)
     login,
     signup,
     logout,
     getDefaultArea,
 
-    // posts
+    // posts and helpers
     createPost,
     editPost,
     deletePost,
@@ -348,10 +347,7 @@ export function DataProvider({ children }) {
     addComment,
     sharePost,
 
-    // follow
-    toggleFollow,
-
-    // offers / responses
+    // offers
     makeOffer,
     respondToRequest,
 
@@ -367,7 +363,7 @@ export function DataProvider({ children }) {
     getUserByEmail,
     getUserByName
 
-  }), [data, currentUser, loadingUsers]);
+  }), [data, loadingUsers, currentUser, followsBoolean]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
