@@ -15,19 +15,27 @@ export default function BottomTab() {
 
   // map current path to index
   const mapPathToIndex = (p) => {
-    if (p.startsWith("/market")) return 0;
-    if (p.startsWith("/search")) return 1;
-    if (p.startsWith("/create")) return 2;
-    if (p.startsWith("/ideas")) return 3;
+    // 1. CHECK MOST SPECIFIC ROUTES FIRST
     if (p.startsWith("/profile")) return 4;
+    if (p.startsWith("/ideas")) return 3;
+    if (p.startsWith("/market/create")) return 2; // Was being missed
+    if (p.startsWith("/search")) return 1;
+    if (p.startsWith("/market")) return 0;
     return 0;
   };
 
+  // We set state based on the fixed mapping function
   const [value, setValue] = React.useState(mapPathToIndex(pathname));
 
+  // 2. We also update the component when the pathname changes
+  React.useEffect(() => {
+    setValue(mapPathToIndex(pathname));
+  }, [pathname]);
+
+
   const handleChange = (event, v) => {
-    setValue(v);
-    // navigate based on tab
+    // 3. We let the state be set by the useEffect,
+    //    we just handle navigation.
     switch (v) {
       case 0: navigate("/market"); break;
       case 1: navigate("/search"); break;

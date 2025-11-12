@@ -1,8 +1,9 @@
 // src/context/DataContext.jsx
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+// 1. IMPORT THE AUTH CONTEXT (Removed .jsx extension for broad compatibility)
+import { useAuth } from "./AuthContext";
 
-const RAFIKI_KEY = "rafikiData_v1";
-const USER_KEY = "currentUser";
+const RAFIKI_KEY = "rafikiData_v1"; // For posts, messages, etc.
 
 const DataContext = createContext(null);
 
@@ -10,15 +11,18 @@ export function useData() {
   return useContext(DataContext);
 }
 
+// UPDATED DEMO_POSTS with user IDs and Avatars
 const DEMO_POSTS = [
   {
     id: "p1",
+    userId: "u_jane", // Added
     user: "Jane Vendor",
+    userAvatar: "https://placehold.co/100x100/ff7a00/fff?text=J", // Added
     role: "vendor",
     type: "sell",
     text: "New Crocs in stock! 🐊 Light, durable and comfy.",
     price: "KSh 1200",
-    images: ["/images/small-crock.jpg"],
+    images: ["https://placehold.co/600x400/ff7a00/fff?text=Croc+Image"],
     likes: 12,
     comments: 4,
     shares: 3,
@@ -26,7 +30,9 @@ const DEMO_POSTS = [
   },
   {
     id: "p2",
+    userId: "u_peter", // Added
     user: "Peter Buyer",
+    userAvatar: "https://placehold.co/100x100/1d4ed8/fff?text=P", // Added
     role: "customer",
     type: "request",
     text: "Looking for size 41 slides, budget KSh 600.",
@@ -37,11 +43,13 @@ const DEMO_POSTS = [
   },
   {
     id: "p3",
+    userId: "u_lyn", // Added
     user: "Lyn Student",
+    userAvatar: "https://placehold.co/100x100/111/fff?text=L", // Added
     role: "student",
     type: "general",
     text: "Just coded my first responsive portfolio site 🎉 #NextGenDev",
-    images: ["/images/portfolio.jpeg"],
+    images: ["https://placehold.co/600x400/1d4ed8/fff?text=Portfolio+Site"],
     likes: 10,
     comments: 1,
     shares: 0,
@@ -49,12 +57,14 @@ const DEMO_POSTS = [
   },
   {
     id: "p4",
+    userId: "u_brian", // Added
     user: "Brian Vendor",
+    userAvatar: "https://placehold.co/100x100/111/fff?text=B", // Added
     role: "vendor",
     type: "sell",
     text: "Selling a clean 2015 Mazda Demio 🚗 — automatic, 1300cc, well maintained. Ready to drive!",
     price: "KSh 890,000",
-    images: ["/images/car.jpg"],
+    images: ["https://placehold.co/600x400/111/fff?text=Mazda+Demio"],
     likes: 19,
     comments: 6,
     shares: 3,
@@ -62,34 +72,28 @@ const DEMO_POSTS = [
   }
 ];
 
+
 function nowISO() {
   return new Date().toISOString();
 }
 
 export function DataProvider({ children }) {
+  // GET ALL AUTH DATA FROM AuthContext
+  const { currentUser, users, setUsers, loading: authLoading } = useAuth();
+
+  // DataContext state is NOW ONLY for non-auth data
   const [data, setData] = useState(() => {
     try {
       const raw = localStorage.getItem(RAFIKI_KEY);
       if (raw) return JSON.parse(raw);
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) { /* ignore */ }
+    
     return {
-      users: [],
       posts: DEMO_POSTS.slice(),
       messages: [],
       notifications: [],
-      follows: {}, // { username: ["follower1","follower2", ...] }
+      follows: {}, // { userIdToFollow: ["followerId1","followerId2", ...] }
     };
-  });
-
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem(USER_KEY) || "null");
-    } catch {
-      return null;
-    }
   });
 
   // persist data
@@ -101,105 +105,20 @@ export function DataProvider({ children }) {
     }
   }, [data]);
 
-  // persist currentUser
-  useEffect(() => {
-    if (currentUser) localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
-    else localStorage.removeItem(USER_KEY);
-  }, [currentUser]);
-
-  // load users.json if present
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await fetch("/data/users.json", { cache: "no-store" });
-        if (!res.ok) throw new Error("users not found");
-        const fileUsers = await res.json();
-        if (!mounted) return;
-        setData((prev) => {
-          const emails = new Set(prev.users.map(u => u.email));
-          const merged = [...prev.users];
-          fileUsers.forEach((u) => {
-            if (!emails.has(u.email)) merged.push(u);
-          });
-          return { ...prev, users: merged.length ? merged : fileUsers };
-        });
-      } catch (err) {
-        console.info("users.json not loaded (ok if not present):", err.message);
-      } finally {
-        if (mounted) setLoadingUsers(false);
-      }
-    })();
-    return () => { mounted = false; };
-  }, []);
-
   // id generator
   const makeId = (prefix = "p") => `${prefix}${Date.now()}`;
-
-  /* ----------------- AUTH-LIKE HELPERS ----------------- */
-  const login = async ({ email, password }) => {
-    if (loadingUsers) {
-      await new Promise(r => setTimeout(r, 80));
-    }
-    const user = (data.users || []).find(u => u.email === (email || "").trim() && u.password === (password || ""));
-    if (!user) {
-      const err = new Error("Invalid credentials");
-      err.code = "INVALID_CREDENTIALS";
-      throw err;
-    }
-    setCurrentUser(user);
-    return user;
-  };
-
-  const signup = async ({ name, email, password, wantToSell = false }) => {
-    if (!name || !email || !password) {
-      const err = new Error("Fill all fields");
-      throw err;
-    }
-    const exists = (data.users || []).find(u => u.email === email.trim());
-    if (exists) {
-      const err = new Error("Email already used");
-      throw err;
-    }
-    const id = `u${(data.users.length || 0) + 1}_${Date.now()}`;
-    const role = wantToSell ? "vendor" : "customer";
-    const user = {
-      id,
-      name: name.trim(),
-      email: email.trim(),
-      password,
-      role,
-      approved: wantToSell ? false : true,
-      createdAt: nowISO()
-    };
-    setData(prev => ({ ...prev, users: [user, ...prev.users] }));
-    setCurrentUser(user);
-    return user;
-  };
-
-  const getDefaultArea = (user = currentUser) => {
-    if (!user) return "market";
-    const marketRoles = ["vendor", "customer", "user"];
-    const lmsRoles = ["student", "educator", "school"];
-    if (marketRoles.includes(user.role)) return "market";
-    if (lmsRoles.includes(user.role)) return "lms";
-    if (user.role === "admin") return "admin";
-    return "market";
-  };
-
-  const logout = () => {
-    setCurrentUser(null);
-  };
 
   /* ----------------- POSTS & INTERACTIONS ----------------- */
   const createPost = ({ type = "general", text = "", images = [], price = "" }) => {
     if (!currentUser) throw new Error("Not authenticated");
     const p = {
       id: makeId("p"),
+      userId: currentUser.id, // Use ID
       user: currentUser.name,
+      userAvatar: currentUser.avatar || `https://placehold.co/100x100/111/fff?text=${currentUser.name?.charAt(0) || "U"}`, // Use avatar or placeholder
       role: currentUser.role,
       type,
-      text: text || (type === "sell" ? "Selling item" : type === "request" ? "Requesting item" : ""),
+      text: text || (type === "sell" ? "Selling item" : type ==="request" ? "Requesting item" : ""),
       images: images || [],
       price: price || "",
       likes: 0,
@@ -229,14 +148,11 @@ export function DataProvider({ children }) {
     setData(prev => {
       const posts = (prev.posts || []).map(p => {
         if (p.id !== postId) return p;
-        const likedBy = new Set(p.likedBy || []);
-        if (!byUserName) {
-          p.likes = (p.likes || 0) + 1;
-          return p;
-        }
-        if (likedBy.has(byUserName)) likedBy.delete(byUserName);
-        else likedBy.add(byUserName);
-        return { ...p, likedBy: Array.from(likedBy), likes: likedBy.size };
+        // This is a simple like toggle, _liked is a local-only flag
+        // A full "likedBy" system would be more complex
+        const liked = p._liked || false;
+        const count = p.likes || 0;
+        return { ...p, likes: liked ? Math.max(0, count - 1) : count + 1, _liked: !liked };
       });
       return { ...prev, posts };
     });
@@ -254,30 +170,35 @@ export function DataProvider({ children }) {
   };
 
   /* ----------------- FOLLOWERS ----------------- */
-  // data.follows shape: { username: ["follower1","follower2"] }
-  const toggleFollowInternal = (username) => {
+  // NOTE: Switched to track by UserID for robustness
+  // data.follows shape: { userIdToFollow: ["followerId1","followerId2"] }
+  const toggleFollowInternal = (userIdToFollow) => {
     if (!currentUser) return { ok: false, message: "Login required" };
     setData(prev => {
       const follows = { ...(prev.follows || {}) };
-      const followers = new Set(follows[username] || []);
-      const me = currentUser.name;
+      const followers = new Set(follows[userIdToFollow] || []);
+      const me = currentUser.id; // Use ID
+      
       if (followers.has(me)) followers.delete(me);
       else followers.add(me);
-      follows[username] = Array.from(followers);
+      
+      follows[userIdToFollow] = Array.from(followers);
       return { ...prev, follows };
     });
     return { ok: true };
   };
 
-  // convert follows into simple boolean map for the *current user*
   const followsBoolean = useMemo(() => {
     const out = {};
     const f = data.follows || {};
-    const me = currentUser?.name;
-    Object.keys(f).forEach(username => {
-      if (!me) out[username] = false;
-      else out[username] = Array.isArray(f[username]) && f[username].includes(me);
-    });
+    const me = currentUser?.id; // Use ID
+    if (!me) return {}; // No user, can't be following anyone
+    
+    // We only need to know who the *current user* follows
+    for (const userIdToFollow in f) {
+      const followers = f[userIdToFollow] || [];
+      out[userIdToFollow] = followers.includes(me);
+    }
     return out;
   }, [data.follows, currentUser]);
 
@@ -308,33 +229,26 @@ export function DataProvider({ children }) {
 
   /* ----------------- ADMIN helpers ----------------- */
   const approveVendor = (userId) => {
-    setData(prev => ({ ...prev, users: prev.users.map(u => u.id === userId ? { ...u, approved: true } : u) }));
+    setUsers(prevUsers => prevUsers.map(u => u.id === userId ? { ...u, approved: true } : u));
   };
 
   /* ----------------- GETTERS ----------------- */
   const getPosts = () => data.posts || [];
-  const getUsers = () => data.users || [];
-  const getUserByEmail = (email) => (data.users || []).find(u => u.email === email);
-  const getUserByName = (name) => (data.users || []).find(u => u.name === name);
+  const getUsers = () => users || [];
+  const getUserByEmail = (email) => (users || []).find(u => u.email === email);
+  const getUserByName = (name) => (users || []).find(u => u.name === name);
 
-  // expose a stable API that matches FeedTabs expectations
+  // THE VALUE
   const value = useMemo(() => ({
     // raw state
     data,
-    loadingUsers,
-    currentUser,
+    loading: authLoading, // Use the auth loading state
 
     // directly expected by FeedTabs and other components
     posts: data.posts || [],
-    updatePost,            // (id, patch) shallow merge
+    updatePost,       // (id, patch) shallow merge
     follows: followsBoolean,
     toggleFollow: toggleFollowInternal,
-
-    // auth-like (used by Login/Signup)
-    login,
-    signup,
-    logout,
-    getDefaultArea,
 
     // posts and helpers
     createPost,
@@ -363,7 +277,7 @@ export function DataProvider({ children }) {
     getUserByEmail,
     getUserByName
 
-  }), [data, loadingUsers, currentUser, followsBoolean]);
+  }), [data, authLoading, currentUser, followsBoolean, users]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

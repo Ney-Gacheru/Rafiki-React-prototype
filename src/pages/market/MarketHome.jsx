@@ -1,18 +1,22 @@
 // src/pages/market/MarketHome.jsx
 import React, { useEffect, useState } from "react";
+// 1. IMPORT Routes and Route
+import { Routes, Route } from "react-router-dom";
 import { Box } from "@mui/material";
-import NavBar from "../../components/NavBar";
-import SideNav from "../../components/SideNav";
-import RightPanel from "../../components/RightPanel";
-import FeedTabs from "../../components/FeedTabs";
-import BottomTab from "../../components/BottomTab";
+import NavBar from "../../components/NavBar.jsx";
+import SideNav from "../../components/SideNav.jsx";
+import RightPanel from "../../components/RightPanel.jsx";
+import FeedTabs from "../../components/FeedTabs.jsx";
+import BottomTab from "../../components/BottomTab.jsx";
+
+// 2. IMPORT THE NEW CreatePost PAGE
+import CreatePost from "./CreatePost.jsx";
 
 /**
  * Responsive MarketHome:
- * - No horizontal scrolling
- * - side / center / right columns fixed on large screens
- * - center becomes full-width and flexible on small screens
- * - center feed has its own vertical scroll
+ * - This component is now a LAYOUT + ROUTER OUTLET.
+ * - It renders the 3-column layout.
+ * - The center column renders *nested routes* (the feed or the create post page).
  */
 
 export default function MarketHome() {
@@ -36,13 +40,12 @@ export default function MarketHome() {
       sx={{
         minHeight: "100vh",
         bgcolor: "#f7f7f8",
-        // ensure page itself doesn't scroll horizontally
         overflowX: "hidden",
       }}
     >
       <NavBar />
 
-      {/* Main row: three columns. Center becomes flexible on small screens */}
+      {/* Main row: three columns */}
       <Box
         component="main"
         sx={{
@@ -51,7 +54,6 @@ export default function MarketHome() {
           gap: { xs: 1.5, md: 3 },
           px: { xs: 1, sm: 2 },
           py: 2,
-          // keep overall container from forcing horizontal scroll
           boxSizing: "border-box",
         }}
       >
@@ -68,25 +70,33 @@ export default function MarketHome() {
           <SideNav />
         </Box>
 
-        {/* Center feed */}
+        {/* Center feed - THIS IS NOW A ROUTER OUTLET */}
         <Box
           sx={{
-            // on large screens use fixed width, on small screens be fluid
             width: { xs: "100%", lg: `${CENTER_W}px` },
-            flex: { xs: "1 1 auto", lg: `0 0 ${CENTER_W}px` },
-            minWidth: 0, // important so children can shrink and avoid horizontal overflow
-            // independent vertical scroll for the feed area
+            flex: { xs: "1.0 1 auto", lg: `0 0 ${CENTER_W}px` },
+            minWidth: 0, 
             height: { xs: `calc(100vh - 64px)`, sm: `calc(100vh - 64px)` },
             overflowY: "auto",
             overflowX: "hidden",
-            // center content padding
             px: { xs: 0, md: 0 },
             boxSizing: "border-box",
           }}
         >
-          <Box sx={{ maxWidth: { xs: "100%", lg: `${CENTER_W}px` }, mx: "auto", px: { xs: 1.5, md: 0 }, py: 1 }}>
-            <FeedTabs />
-          </Box>
+          {/* 3. SET UP NESTED ROUTES */}
+          <Routes>
+            {/* /market/ maps to FeedTabs */}
+            <Route index element={
+              <Box sx={{ maxWidth: { xs: "100%", lg: `${CENTER_W}px` }, mx: "auto", px: { xs: 1.5, md: 0 }, py: 1 }}>
+                <FeedTabs />
+              </Box>
+            } />
+            
+            {/* /market/create maps to CreatePost */}
+            <Route path="create" element={<CreatePost />} />
+            
+            {/* TODO: Add other nested routes like /market/post/:id */}
+          </Routes>
         </Box>
 
         {/* Right panel (desktop only) */}

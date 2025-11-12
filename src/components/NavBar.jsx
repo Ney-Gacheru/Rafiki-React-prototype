@@ -49,10 +49,7 @@ export default function NavBar() {
         <Toolbar sx={{ justifyContent: "space-between", height: "100%" }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <RouterLink to="/" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
-              <img src="/logo192.png" alt="rafiki logo" style={{ width: 36, height: 36 }} />
-              <Typography variant="h6" sx={{ fontWeight: 700, ml: 1, color: "inherit" }}>
-                R
-              </Typography>
+              <img src="/R-logo.png" alt="rafiki logo" style={{ width: 60, height: 60 }} />
             </RouterLink>
           </Box>
 
@@ -84,7 +81,7 @@ export default function NavBar() {
               </Button>
             ) : (
               <Button component={RouterLink} to="/login" sx={{ textTransform: "none" }}>
-                Login
+                Logout
               </Button>
             )}
           </Box>
