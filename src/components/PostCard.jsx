@@ -21,18 +21,27 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import ShareIcon from "@mui/icons-material/Share";
 import VerifiedIcon from "@mui/icons-material/Verified";
-import AddIcon from "@mui/icons-material/Add";
-import CheckIcon from "@mui/icons-material/Check";
+import PublicIcon from "@mui/icons-material/Public";
+import PeopleIcon from "@mui/icons-material/People";
+import LockIcon from "@mui/icons-material/Lock";
 import { useNavigate } from "react-router-dom";
-// FIX: Removed .jsx extension from imports
-import { useData } from "../context/DataContext";
-import CarouselSimple from "./CarouselSimple"; // Extracted carousel
+// FIX: Added .jsx extensions back to fix bundler resolution
+import { useData } from "../context/DataContext.jsx";
+import CarouselSimple from "./CarouselSimple.jsx"; 
 
 // Helper for post type tags
 const tagFor = (t) => {
   if (t === "sell") return { label: "For Sale", bg: "#fff4e6", color: "#d35400" };
   if (t === "request") return { label: "Request", bg: "#eaf4ff", color: "#1d4ed8" };
   return { label: "General", bg: "#f3f4f6", color: "#4b5563" };
+};
+
+// Helper for visibility icon
+const VisibilityIcon = ({ visibility }) => {
+  const sx = { fontSize: 12, color: "text.secondary", ml: 0.5 };
+  if (visibility === 'followers') return <PeopleIcon sx={sx} />;
+  if (visibility === 'onlyMe') return <LockIcon sx={sx} />;
+  return <PublicIcon sx={sx} />; // Default 'everyone'
 };
 
 export default function PostCard({ post }) {
@@ -50,16 +59,48 @@ export default function PostCard({ post }) {
   };
 
   const isVendor = post.role === "vendor";
-  const isStudent = post.role === "student";
-  const isFollowing = follows && post.userId && follows[post.userId] === true; // Use userId
+  const isFollowing = follows && post.userId && follows[post.userId] === true;
   const imgs = Array.isArray(post.images) ? post.images : [];
   const tag = tagFor(post.type);
 
   const handleViewProfile = () => {
     setProfileOpen(false);
-    // We'll need to create this page next
     navigate(`/profile/${post.userId}`); 
   };
+  
+  // Renders the main action button based on post type
+  const renderActionButton = () => {
+    // 1. "Sell" and "Request" posts get a "View Deal" button
+    if (["sell","request"].includes(post.type)) {
+      return (
+        <Button 
+          size="small" 
+          variant="contained" 
+          onClick={() => console.log("View Deal (placeholder)")} 
+          sx={{ textTransform: "none", fontSize: isXs ? 12 : 13, borderRadius: 1.5, boxShadow: "none" }}
+        >
+          View Deal
+        </Button>
+      );
+    }
+    
+    // 2. "General" posts now *all* get a "Scout Talent" button
+    if (post.type === "general") {
+       return (
+        <Button 
+          size="small" 
+          variant="outlined" 
+          onClick={() => console.log("Scout Talent (placeholder)")} 
+          sx={{ textTransform: "none", fontSize: isXs ? 12 : 13, borderRadius: 1.5 }}
+        >
+          Scout Talent
+        </Button>
+      );
+    }
+    
+    // Fallback (shouldn't be reached)
+    return null;
+  }
 
   return (
     <>
@@ -96,49 +137,49 @@ export default function PostCard({ post }) {
                   {post.user}
                 </Typography>
                 {isVendor && <VerifiedIcon sx={{ fontSize: 16, color: "primary.main" }} />}
-                <Chip label={tag.label} size="small" sx={{ ml: 0.5, bgcolor: tag.bg, color: tag.color, fontWeight: 700, height: 22, fontSize: 10 }} />
+                {post.type !== 'general' && (
+                  <Chip label={tag.label} size="small" sx={{ ml: 0.5, bgcolor: tag.bg, color: tag.color, fontWeight: 700, height: 22, fontSize: 10 }} />
+                )}
               </Stack>
-              <Typography variant="caption" color="text.secondary" sx={{ fontSize: isXs ? 11 : 12 }}>
-                {new Date(post.createdAt || "").toLocaleDateString()}
-              </Typography>
+              
+              <Stack direction="row" alignItems="center">
+                <Typography variant="caption" color="text.secondary" sx={{ fontSize: isXs ? 11 : 12 }}>
+                  {new Date(post.createdAt || "").toLocaleDateString()}
+                </Typography>
+                <VisibilityIcon visibility={post.visibility} />
+              </Stack>
             </Box>
           </Stack>
           
-          {/* Right side: Follow/View Deal Button */}
+          {/* Right side: Action Button */}
           <Box sx={{ flexShrink: 0, ml: 1 }}>
-            {(post.type === "general" && isStudent) ? (
-              <Button size="small" variant="outlined" onClick={() => console.log("Scout Talent (placeholder)")} sx={{ textTransform: "none", fontSize: isXs ? 12 : 13, borderRadius: 1.5 }}>
-                Scout Talent
-              </Button>
-            ) : (["sell","request"].includes(post.type)) ? (
-              <Button size="small" variant="contained" onClick={() => console.log("View Deal (placeholder)")} sx={{ textTransform: "none", fontSize: isXs ? 12 : 13, borderRadius: 1.5, boxShadow: "none" }}>
-                View Deal
-              </Button>
-            ) : (
-              // Follow button for "General" posts by non-students
-              <Button
-                size="small"
-                variant={isFollowing ? "text" : "contained"}
-                startIcon={isFollowing ? <CheckIcon /> : <AddIcon />}
-                onClick={() => post.userId && toggleFollow(post.userId)}
-                disabled={!post.userId}
-                sx={{ textTransform: "none", fontSize: isXs ? 12 : 13, borderRadius: 1.5, boxShadow: "none", minWidth: 90 }}
-              >
-                {isFollowing ? "Following" : "Follow"}
-              </Button>
-            )}
+            {renderActionButton()}
           </Box>
         </Stack>
 
-        {/* Body text */}
-        <Typography sx={{ mt: 1.5, mb: 1, fontSize: isXs ? 14 : 15, lineHeight: 1.45, color: "#333", whiteSpace: 'pre-wrap' }}>
-          {post.text}
-        </Typography>
+        {/* Item Name (for Sell/Request) */}
+        {post.itemName && (
+          <Typography sx={{ mt: 1.5, fontWeight: 700, fontSize: isXs ? 15 : 17 }}>
+            {post.itemName}
+          </Typography>
+        )}
 
-        {/* Price */}
+        {/* Body text */}
+        {post.text && (
+          <Typography sx={{ mt: 0.5, mb: 1, fontSize: isXs ? 14 : 15, lineHeight: 1.45, color: "#333", whiteSpace: 'pre-wrap' }}>
+            {post.text}
+          </Typography>
+        )}
+        
+        {/* Price / Budget */}
         {post.price && (
           <Typography sx={{ fontWeight: 800, mt: 0.5, fontSize: isXs ? 14 : 16, color: "primary.main" }}>
-            {post.price}
+            Price: {post.price}
+          </Typography>
+        )}
+        {post.budget && (
+          <Typography sx={{ fontWeight: 700, mt: 0.5, fontSize: isXs ? 14 : 16, color: "text.secondary" }}>
+            Budget: {post.budget}
           </Typography>
         )}
 
