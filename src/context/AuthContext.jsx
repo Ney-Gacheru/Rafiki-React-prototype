@@ -1,22 +1,39 @@
+// src/context/AuthContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-
-/**
- * AuthContext
- * - loads initial users from /data/users.json (public folder)
- * - uses localStorage for persistence (users + currentUser)
- * - login / signup / logout
- * - getDefaultArea(user) -> "market" | "lms"
- *
- * NOTES:
- * - Place a users.json file in public/data/users.json (sample below)
- * - Vendor signups are created with approved: false (admin must set approved: true)
- */
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 const USERS_LS_KEY = "rafiki_users_v1";
 const CURRENT_USER_KEY = "rafiki_current_user";
+
+// Helper to generate avatar placeholder
+const getAvatarUrl = (name) => {
+  const firstLetter = name ? name.charAt(0).toUpperCase() : "R";
+  const colors = ["8e44ad", "3498db", "2ecc71", "e67e22", "e74c3c"];
+  const color = colors[firstLetter.charCodeAt(0) % colors.length];
+  return `https://placehold.co/100x100/${color}/fff?text=${firstLetter}`;
+};
+
+// Helper to "enrich" user data on load
+const enrichUser = (user) => {
+  let verification = "none";
+  if (user.role === "vendor" || user.role === "educator") {
+    verification = user.approved ? "vetted" : "pending";
+  } else if (user.role === "school") {
+    verification = user.approved ? "verified_org" : "pending";
+  } else if (user.role === "student") {
+    verification = "student";
+  }
+
+  return {
+    ...user,
+    userId: user.id, // Standardize on userId
+    userAvatar: getAvatarUrl(user.name), // Auto-generate avatar
+    verification: verification,
+  };
+};
+
 
 export function AuthProvider({ children }) {
   const [users, setUsers] = useState(() => {
@@ -47,12 +64,16 @@ export function AuthProvider({ children }) {
         const resp = await fetch("/data/users.json", { cache: "no-store" });
         if (!resp.ok) throw new Error("no seed users");
         const seed = await resp.json();
-        setUsers(seed);
-        localStorage.setItem(USERS_LS_KEY, JSON.stringify(seed));
+        
+        // Enrich the seed data
+        const enrichedSeed = seed.map(enrichUser);
+
+        setUsers(enrichedSeed);
+        localStorage.setItem(USERS_LS_KEY, JSON.stringify(enrichedSeed));
       } catch (err) {
         // fallback: create a minimal admin user if fetch fails
         const fallback = [
-          { id: "u_admin", name: "Admin", email: "admin@rafiki.local", password: "admin", role: "admin", approved: true }
+          enrichUser({ id: "u_admin", name: "Admin", email: "admin@rafiki.local", password: "admin", role: "admin", approved: true })
         ];
         setUsers(fallback);
         localStorage.setItem(USERS_LS_KEY, JSON.stringify(fallback));
@@ -85,7 +106,6 @@ export function AuthProvider({ children }) {
     if (!user || user.password !== password) {
       throw new Error("Invalid credentials");
     }
-    // If vendor is not approved, we still allow login but mark as notApproved flag (app can restrict actions)
     setCurrentUser(user);
     return user;
   }
@@ -96,16 +116,15 @@ export function AuthProvider({ children }) {
     const exists = findUserByEmail(email);
     if (exists) throw new Error("Email already in use");
 
-    const newUser = {
+    const newUser = enrichUser({
       id: "u_" + Date.now(),
       name,
       email,
       password,
-      role: wantToSell ? "vendor" : "customer", // default signups go to market as customer/buyer
-      // vendors must be vetted
+      role: wantToSell ? "vendor" : "customer",
       approved: wantToSell ? false : true,
       createdAt: new Date().toISOString()
-    };
+    });
 
     const updated = [newUser, ...(users || [])];
     setUsers(updated);
@@ -124,12 +143,10 @@ export function AuthProvider({ children }) {
     if (currentUser && currentUser.id === updatedUser.id) setCurrentUser(updatedUser);
   }
 
+  // All users now land on /market for a unified experience
   function getDefaultArea(user) {
     if (!user) return "market";
-    const marketRoles = ["vendor", "customer", "buyer"];
-    const lmsRoles = ["student", "educator", "school"];
-    if (marketRoles.includes(user.role)) return "market";
-    if (lmsRoles.includes(user.role)) return "lms";
+    if (user.role === "admin") return "admin";
     return "market";
   }
 
@@ -143,7 +160,7 @@ export function AuthProvider({ children }) {
       logout,
       updateUser,
       getDefaultArea,
-      setUsers
+      setUsers // Used by DataContext to approve vendors
     }}>
       {children}
     </AuthContext.Provider>

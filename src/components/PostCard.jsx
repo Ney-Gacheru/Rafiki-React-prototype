@@ -24,10 +24,14 @@ import VerifiedIcon from "@mui/icons-material/Verified";
 import PublicIcon from "@mui/icons-material/Public";
 import PeopleIcon from "@mui/icons-material/People";
 import LockIcon from "@mui/icons-material/Lock";
+import SchoolIcon from '@mui/icons-material/School';
+import GavelIcon from '@mui/icons-material/Gavel';
+import CorporateFareIcon from '@mui/icons-material/CorporateFare';
 import { useNavigate } from "react-router-dom";
-// FIX: Added .jsx extensions back to fix bundler resolution
-import { useData } from "../context/DataContext.jsx";
-import CarouselSimple from "./CarouselSimple.jsx"; 
+// FIX: Removed .jsx extensions
+import { useData } from "../context/DataContext";
+import { useAuth } from "../context/AuthContext";
+import CarouselSimple from "./CarouselSimple";
 
 // Helper for post type tags
 const tagFor = (t) => {
@@ -44,12 +48,30 @@ const VisibilityIcon = ({ visibility }) => {
   return <PublicIcon sx={sx} />; // Default 'everyone'
 };
 
+// Helper for Verification Badge
+const VerificationBadge = ({ verification }) => {
+  const sx = { fontSize: 16, color: "primary.main" };
+  if (verification === 'vetted') return <GavelIcon sx={{ ...sx, color: "success.main" }} />;
+  if (verification === 'verified_org') return <CorporateFareIcon sx={sx} />;
+  if (verification === 'student') return <SchoolIcon sx={{ ...sx, color: "secondary.main" }} />;
+  return null;
+};
+
+// Helper for Role Name
+const RoleName = ({ role }) => {
+  if (role === 'vendor') return "Vetted Vendor";
+  if (role === 'educator') return "Educator";
+  if (role === 'school') return "Verified School";
+  if (role === 'student') return "CodeCraft Student";
+  return "Rafiki Member";
+};
+
 export default function PostCard({ post }) {
   const { updatePost, follows = {}, toggleFollow } = useData();
+  const { currentUser } = useAuth();
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
-
   const [profileOpen, setProfileOpen] = useState(false);
 
   const toggleLike = () => {
@@ -58,19 +80,17 @@ export default function PostCard({ post }) {
     updatePost(post.id, { likes: liked ? Math.max(0, count - 1) : count + 1, _liked: !liked });
   };
 
-  const isVendor = post.role === "vendor";
   const isFollowing = follows && post.userId && follows[post.userId] === true;
   const imgs = Array.isArray(post.images) ? post.images : [];
   const tag = tagFor(post.type);
 
   const handleViewProfile = () => {
     setProfileOpen(false);
-    navigate(`/profile/${post.userId}`); 
+    navigate(`/profile/${post.userId || post.user}`); 
   };
   
   // Renders the main action button based on post type
   const renderActionButton = () => {
-    // 1. "Sell" and "Request" posts get a "View Deal" button
     if (["sell","request"].includes(post.type)) {
       return (
         <Button 
@@ -84,23 +104,44 @@ export default function PostCard({ post }) {
       );
     }
     
-    // 2. "General" posts now *all* get a "Scout Talent" button
+    // Show Scout Talent on ALL general posts now
     if (post.type === "general") {
+       // *** NEW LOGIC: Change button text based on user role ***
+       const isStudentViewer = currentUser?.role === 'student';
+       const buttonText = isStudentViewer ? "View Portfolio" : "Scout Talent";
+
        return (
         <Button 
           size="small" 
           variant="outlined" 
-          onClick={() => console.log("Scout Talent (placeholder)")} 
+          onClick={handleViewProfile} // Go directly to profile
           sx={{ textTransform: "none", fontSize: isXs ? 12 : 13, borderRadius: 1.5 }}
         >
-          Scout Talent
+          {buttonText}
         </Button>
       );
     }
     
-    // Fallback (shouldn't be reached)
     return null;
   }
+
+  // --- COMMENT LOGIC ---
+  const lmsRoles = ['student', 'educator', 'school'];
+  const isPostByLmsUser = lmsRoles.includes(post.role);
+  
+  let canComment = false;
+  if (currentUser) {
+    const isViewerLmsUser = lmsRoles.includes(currentUser.role);
+
+    if (!isPostByLmsUser) {
+      // Public post (by vendor/customer) - anyone logged in can comment
+      canComment = true;
+    } else {
+      // Student/Educator/School post - only other LMS users can comment
+      canComment = isViewerLmsUser;
+    }
+  }
+  // --- END COMMENT LOGIC ---
 
   return (
     <>
@@ -136,7 +177,9 @@ export default function PostCard({ post }) {
                 >
                   {post.user}
                 </Typography>
-                {isVendor && <VerifiedIcon sx={{ fontSize: 16, color: "primary.main" }} />}
+                {/* This is where the badge is rendered */}
+                <VerificationBadge verification={post.verification} />
+                {/* Only show "For Sale" / "Request" tags */}
                 {post.type !== 'general' && (
                   <Chip label={tag.label} size="small" sx={{ ml: 0.5, bgcolor: tag.bg, color: tag.color, fontWeight: 700, height: 22, fontSize: 10 }} />
                 )}
@@ -202,10 +245,14 @@ export default function PostCard({ post }) {
             </IconButton>
             <Typography variant="body2" sx={{ minWidth: 28, fontSize: isXs ? 12 : 13, color: "text.secondary", fontWeight: 600 }}>{post.likes || 0}</Typography>
 
-            <IconButton size={isXs ? "small" : "medium"} onClick={() => console.log("Comments (placeholder)")} aria-label="comments">
-              <ChatBubbleOutlineIcon fontSize="inherit" />
-            </IconButton>
-            <Typography variant="body2" sx={{ minWidth: 28, fontSize: isXs ? 12 : 13, color: "text.secondary", fontWeight: 600 }}>{post.comments || 0}</Typography>
+            {canComment && (
+              <>
+                <IconButton size={isXs ? "small" : "medium"} onClick={() => console.log("Comments (placeholder)")} aria-label="comments">
+                  <ChatBubbleOutlineIcon fontSize="inherit" />
+                </IconButton>
+                <Typography variant="body2" sx={{ minWidth: 28, fontSize: isXs ? 12 : 13, color: "text.secondary", fontWeight: 600 }}>{post.comments || 0}</Typography>
+              </>
+            )}
           </Stack>
           
           {/* Center Actions: Make Offer / Respond */}
@@ -238,9 +285,7 @@ export default function PostCard({ post }) {
         </DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-            {post.role === 'vendor' && "Vetted Vendor"}
-            {post.role === 'student' && "CodeCraft Student"}
-            {post.role === 'customer' && "Rafiki Member"}
+            <RoleName role={post.role} />
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', p: 2 }}>

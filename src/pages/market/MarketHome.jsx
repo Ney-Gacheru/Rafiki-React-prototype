@@ -1,23 +1,40 @@
 // src/pages/market/MarketHome.jsx
 import React, { useEffect, useState } from "react";
-// 1. IMPORT Routes and Route
-import { Routes, Route } from "react-router-dom";
 import { Box } from "@mui/material";
+import { Routes, Route } from "react-router-dom";
 import NavBar from "../../components/NavBar.jsx";
 import SideNav from "../../components/SideNav.jsx";
 import RightPanel from "../../components/RightPanel.jsx";
-import FeedTabs from "../../components/FeedTabs.jsx";
 import BottomTab from "../../components/BottomTab.jsx";
-
-// 2. IMPORT THE NEW CreatePost PAGE
 import CreatePost from "./CreatePost.jsx";
+import Profile from "../Profile.jsx";
+import StudentCourses from "../lms/StudentCourses.jsx";
+import EducatorClassroom from "../lms/EducatorClassroom.jsx";
+import SchoolDashboard from "../lms/SchoolDashboard.jsx";
+import Search from "../Search.jsx";
+import Ideas from "../Ideas.jsx";
+import Messages from "../Messages.jsx";
+import Notifications from "../Notifications.jsx";
 
-/**
- * Responsive MarketHome:
- * - This component is now a LAYOUT + ROUTER OUTLET.
- * - It renders the 3-column layout.
- * - The center column renders *nested routes* (the feed or the create post page).
- */
+import MarketFeedTabs from "../../components/MarketFeedTabs.jsx";
+import StudentFeedTabs from "../../components/StudentFeedTabs.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+
+const studentRoles = ["student"];
+
+// This is the main "Feed" page component
+const MainFeed = () => {
+  const { currentUser } = useAuth();
+  const isStudent = currentUser && studentRoles.includes(currentUser.role);
+  const CENTER_W = 760; // Keep consistent with layout
+
+  return (
+    <Box sx={{ maxWidth: { xs: "100%", lg: `${CENTER_W}px` }, mx: "auto", px: { xs: 1.5, md: 0 }, py: 1 }}>
+      {isStudent ? <StudentFeedTabs /> : <MarketFeedTabs />}
+    </Box>
+  );
+};
+
 
 export default function MarketHome() {
   const [showBottom, setShowBottom] = useState(false);
@@ -39,13 +56,12 @@ export default function MarketHome() {
     <Box
       sx={{
         minHeight: "100vh",
-        bgcolor: "#f7f7f8",
+        bgcolor: "background.default",
         overflowX: "hidden",
       }}
     >
       <NavBar />
 
-      {/* Main row: three columns */}
       <Box
         component="main"
         sx={{
@@ -70,12 +86,12 @@ export default function MarketHome() {
           <SideNav />
         </Box>
 
-        {/* Center feed - THIS IS NOW A ROUTER OUTLET */}
+        {/* Center feed (This is the router outlet) */}
         <Box
           sx={{
             width: { xs: "100%", lg: `${CENTER_W}px` },
-            flex: { xs: "1.0 1 auto", lg: `0 0 ${CENTER_W}px` },
-            minWidth: 0, 
+            flex: { xs: "1 1 auto", lg: `0 0 ${CENTER_W}px` },
+            minWidth: 0,
             height: { xs: `calc(100vh - 64px)`, sm: `calc(100vh - 64px)` },
             overflowY: "auto",
             overflowX: "hidden",
@@ -83,19 +99,27 @@ export default function MarketHome() {
             boxSizing: "border-box",
           }}
         >
-          {/* 3. SET UP NESTED ROUTES */}
           <Routes>
-            {/* /market/ maps to FeedTabs */}
-            <Route index element={
-              <Box sx={{ maxWidth: { xs: "100%", lg: `${CENTER_W}px` }, mx: "auto", px: { xs: 1.5, md: 0 }, py: 1 }}>
-                <FeedTabs />
-              </Box>
-            } />
+            {/* Market routes */}
+            <Route path="market" element={<MainFeed />} />
+            <Route path="market/create" element={<CreatePost />} />
             
-            {/* /market/create maps to CreatePost */}
-            <Route path="create" element={<CreatePost />} />
+            {/* Shared routes */}
+            <Route path="search" element={<Search />} />
+            <Route path="profile/:userId" element={<Profile />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="notifications" element={<Notifications />} />
             
-            {/* TODO: Add other nested routes like /market/post/:id */}
+            {/* Public/Market Ideas Page */}
+            <Route path="ideas" element={<Ideas />} />
+
+            {/* LMS Routes */}
+            <Route path="courses" element={<StudentCourses />} />
+            <Route path="classroom" element={<EducatorClassroom />} />
+            <Route path="school-dashboard" element={<SchoolDashboard />} />
+
+            {/* Default route */}
+            <Route path="*" element={<MainFeed />} />
           </Routes>
         </Box>
 

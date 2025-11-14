@@ -1,40 +1,90 @@
-// src/theme.js
+// src/context/ThemeContext.jsx
 import { createTheme } from "@mui/material/styles";
 
-const rafikiOrange = "#ff7a00";
-const rafikiDark = "#1f2d3d";
-
-const theme = createTheme({
+// 1. Define the Market theme (default orange)
+export const marketTheme = createTheme({
   palette: {
-    mode: "light",
     primary: {
-      main: rafikiOrange,
-      contrastText: "#fff",
+      main: "#ff7a00", // Rafiki Orange
     },
     secondary: {
-      main: "#0ea5e9", // used for follow state / accents
+      main: "#4b5563", // Gray
     },
-    text: {
-      primary: rafikiDark,
-    },
-    rafiki: {
-      light: "#fff7f0",
-      main: rafikiOrange,
-      dark: "#b35000",
-    },
-  },
-  components: {
-    MuiButton: {
-      defaultProps: { disableElevation: true },
-      styleOverrides: {
-        root: { borderRadius: 10, textTransform: "none", fontWeight: 600 },
-      },
+    background: {
+      default: "#f7f7f8", // Light gray background
+      paper: "#ffffff",
     },
   },
   typography: {
-    fontFamily:
-      'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial',
+    fontFamily: "Inter, sans-serif",
+    h6: { fontWeight: 700 },
+    subtitle2: { fontWeight: 700 },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: "none",
+        },
+        contained: {
+          boxShadow: "none",
+          "&:hover": {
+            boxShadow: "none",
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
+    },
   },
 });
 
-export default theme;
+// 2. Define the LMS theme (blue)
+export const lmsTheme = createTheme({
+  palette: {
+    primary: {
+      main: "#3b82f6", // CodeCraft Blue
+    },
+    secondary: {
+      main: "#4b5563", // Gray
+    },
+    background: {
+      default: "#f9fafb", // Lighter gray background
+      paper: "#ffffff",
+    },
+  },
+  typography: {
+    fontFamily: "Inter, sans-serif",
+    h6: { fontWeight: 700 },
+    subtitle2: { fontWeight: 700 },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          textTransform: "none",
+        },
+        contained: {
+          boxShadow: "none",
+          "&:hover": {
+            boxShadow: "none",
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
+    },
+  },
+});

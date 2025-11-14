@@ -1,48 +1,73 @@
-// src/components/SideNav.jsx
-import React from "react";
+import React, { useMemo } from "react";
 import { Box, List, ListItemButton, ListItemIcon, ListItemText } from "@mui/material";
 import HomeIcon from "@mui/icons-material/Home";
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import LightbulbIcon from "@mui/icons-material/Lightbulb";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { useNavigate, useLocation } from "react-router-dom"; // 1. IMPORT ROUTER HOOKS
+import SchoolIcon from "@mui/icons-material/School"; // Student: Courses
+import ClassroomIcon from "@mui/icons-material/SupervisorAccount"; // Educator: Classroom
+import DashboardIcon from "@mui/icons-material/Dashboard"; // School: Dashboard
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx"; 
 
-// 2. DEFINE NAVIGATION ITEMS
-const navItems = [
-  { text: "Home", icon: <HomeIcon />, path: "/market" },
-  { text: "Search", icon: <SearchIcon />, path: "/search" },
-  { text: "Post", icon: <AddCircleOutlineIcon />, path: "/market/create" },
-  { text: "Ideas", icon: <LightbulbIcon />, path: "/ideas" },
-  { text: "Profile", icon: <AccountCircleIcon />, path: "/profile" },
-];
+// Helper function to get the correct LMS/Ideas link based on role
+const getLmsLink = (role) => {
+  switch (role) {
+    case "student":
+      return { text: "Courses", icon: <SchoolIcon />, path: "/courses" };
+    case "educator":
+      return { text: "Classroom", icon: <ClassroomIcon />, path: "/classroom" };
+    case "school":
+      return { text: "Dashboard", icon: <DashboardIcon />, path: "/school-dashboard" };
+    default:
+      // vendor, customer
+      return { text: "Ideas", icon: <LightbulbIcon />, path: "/ideas" };
+  }
+};
 
 export default function SideNav() {
-  const navigate = useNavigate(); // 3. GET NAVIGATION FUNCTION
-  const location = useLocation(); // 4. GET CURRENT LOCATION
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const pathname = location.pathname;
 
-  // 5. DETERMINE SELECTED PATH (most specific first)
-  const getSelectedPath = (p) => {
-    if (p.startsWith("/profile")) return "/profile";
-    if (p.startsWith("/ideas")) return "/ideas";
-    if (p.startsWith("/market/create")) return "/market/create";
-    if (p.startsWith("/search")) return "/search";
-    if (p.startsWith("/market")) return "/market";
-    return "/market";
+  // Define navigation items based on role
+  const navItems = useMemo(() => {
+    const role = currentUser?.role;
+    const lmsLink = getLmsLink(role); // Get the role-specific link
+    
+    const items = [
+      { text: "Home", icon: <HomeIcon />, path: "/market" },
+      { text: "Search", icon: <SearchIcon />, path: "/search" },
+      { text: "Post", icon: <AddCircleOutlineIcon />, path: "/market/create" },
+    ];
+    
+    items.push(lmsLink); // Add the correct link
+    
+    items.push({ 
+      text: "Profile", 
+      icon: <AccountCircleIcon />, 
+      path: `/profile/${currentUser?.userId || 'me'}` 
+    });
+    return items;
+
+  }, [currentUser]);
+
+
+  const isSelected = (item) => {
+    if (item.path === "/market") return pathname === "/market" || pathname === "/";
+    return pathname.startsWith(item.path);
   };
-  
-  const selectedPath = getSelectedPath(pathname);
 
   return (
     <Box sx={{ position: "sticky", top: 80, height: "calc(100vh - 100px)", p: 2 }}>
       <List>
-        {/* 6. MAP OVER ITEMS TO CREATE DYNAMIC BUTTONS */}
         {navItems.map((item) => (
-          <ListItemButton
-            key={item.text}
-            selected={selectedPath === item.path} // Set selected based on path
-            onClick={() => navigate(item.path)}     // Navigate on click
+          <ListItemButton 
+            key={item.text} 
+            selected={isSelected(item)}
+            onClick={() => navigate(item.path)}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.text} />

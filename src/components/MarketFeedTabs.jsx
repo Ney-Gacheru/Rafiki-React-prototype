@@ -1,4 +1,5 @@
-// src/components/FeedTabs.jsx
+// src/components/MarketFeedTabs.jsx
+// This is your previous FeedTabs.jsx, renamed.
 import React, { useMemo, useState } from "react";
 import {
   Box,
@@ -8,14 +9,12 @@ import {
   useTheme,
   useMediaQuery
 } from "@mui/material";
-// Fixed import path
-import { useData } from "../context/DataContext.jsx";
-// Fixed import path
-import PostCard from "./PostCard.jsx"; // 1. WE IMPORT THE NEW COMPONENT
+import { useData } from "../context/DataContext.jsx"; // FIX: Added .jsx
+import PostCard from "./PostCard.jsx"; // FIX: Added .jsx
 
-export default function FeedTabs({ posts: propPosts }) {
+export default function MarketFeedTabs() {
   const { posts: ctxPosts = [] } = useData();
-  const posts = propPosts || ctxPosts || [];
+  const posts = ctxPosts || [];
 
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
@@ -24,15 +23,24 @@ export default function FeedTabs({ posts: propPosts }) {
 
   const filtered = useMemo(() => {
     if (tab === "sale") return posts.filter(p => p.type === "sell");
-    if (tab ==="request") return posts.filter(p => p.type === "request");
+    if (tab === "request") return posts.filter(p => p.type === "request");
+    // "For You" for market users shows everything (social, sell, request)
     return posts;
   }, [posts, tab]);
 
-
   return (
     <Box>
-      {/* Sticky tab row centered (compact) */}
-      <Box sx={{ position: "sticky", top: 0, zIndex: 40, py: 1, bgcolor: "transparent" }}>
+      {/* Sticky tab row */}
+      <Box sx={{ 
+        position: "sticky", 
+        top: 0, 
+        zIndex: 40, 
+        py: 1, 
+        // FIX: Add background to prevent content showing through
+        bgcolor: "#f7f7f8",
+        backdropFilter: "blur(4px)",
+        borderBottom: "1px solid #eee"
+      }}>
         <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
           <Button
             variant={tab === "sale" ? "contained" : "text"}
@@ -61,22 +69,16 @@ export default function FeedTabs({ posts: propPosts }) {
         </Stack>
       </Box>
 
-      <Stack spacing={1.25} sx={{ mt: 1 }}>
+      <Stack spacing={1.5} sx={{ mt: 1, pb: 8 }}>
         {filtered.length === 0 && (
           <Typography color="text.secondary" sx={{ textAlign: "center", py: 6, fontSize: isXs ? 13 : 15 }}>
             No posts yet.
           </Typography>
         )}
 
-        {/* 2. THE RENDER LOGIC IS NOW MUCH CLEANER */}
         {filtered.map(post => (
-          <PostCard 
-            key={post.id} 
-            post={post} 
-            isXs={isXs} 
-          />
+          <PostCard key={post.id} post={post} />
         ))}
-
       </Stack>
     </Box>
   );
